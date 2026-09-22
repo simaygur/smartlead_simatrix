@@ -54,10 +54,10 @@ def lead_kaydet():
     telefon = data.get("telefon")
     eposta = data.get("eposta")
 
-    if not isim or not telefon:
+    if not isim or not telefon or not eposta:
         return jsonify({
             "basari": False,
-            "hata": "İsim ve telefon zorunludur."
+            "hata": "İsim, telefon ve e-posta zorunludur."
         }), 400
 
     lead_ekle(isim, telefon, eposta)

@@ -31,23 +31,58 @@ def init_db(app):
         db.execute("""
             CREATE TABLE IF NOT EXISTS leads (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                isim TEXT NOT NULL,
-                telefon TEXT NOT NULL,
-                eposta TEXT,
+                isim NVARCHAR(150) NOT NULL,
+                telefon NVARCHAR(20) NOT NULL,
+                eposta NVARCHAR(150) NOT NULL,
                 tarih TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
 
         kolonlar = {
-            kolon["name"]
+            kolon["name"]: kolon
             for kolon in db.execute("PRAGMA table_info(leads)").fetchall()
         }
 
-        if "eposta" not in kolonlar:
-            db.execute("ALTER TABLE leads ADD COLUMN eposta TEXT")
+        beklenen_tipler = {
+            "isim": "NVARCHAR(150)",
+            "telefon": "NVARCHAR(20)",
+            "eposta": "NVARCHAR(150)"
+        }
 
-        if "mesaj" in kolonlar:
-            db.execute("ALTER TABLE leads DROP COLUMN mesaj")
+        migration_gerekli = (
+            "mesaj" in kolonlar
+            or "eposta" not in kolonlar
+            or any(
+                kolonlar[alan]["type"].upper() != beklenen_tip
+                for alan, beklenen_tip in beklenen_tipler.items()
+                if alan in kolonlar
+            )
+            or ("eposta" in kolonlar and not kolonlar["eposta"]["notnull"])
+        )
+
+        if migration_gerekli:
+            eposta_degeri = (
+                "COALESCE(eposta, '')" if "eposta" in kolonlar else "''"
+            )
+
+            db.execute("""
+                CREATE TABLE leads_yeni (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    isim NVARCHAR(150) NOT NULL,
+                    telefon NVARCHAR(20) NOT NULL,
+                    eposta NVARCHAR(150) NOT NULL,
+                    tarih TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            db.execute(f"""
+                INSERT INTO leads_yeni (id, isim, telefon, eposta, tarih)
+                SELECT id, isim, telefon, {eposta_degeri}, tarih
+                FROM leads
+            """)
+
+            db.execute("DROP TABLE leads")
+            db.execute("ALTER TABLE leads_yeni RENAME TO leads")
 
         db.commit()
 
