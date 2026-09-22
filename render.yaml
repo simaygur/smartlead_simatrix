@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: smartlead-simatrix
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT run:app
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        value: /var/data/leads.db
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
+    disk:
+      name: smartlead-data
+      mountPath: /var/data
+      sizeGB: 1
